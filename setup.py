@@ -58,6 +58,7 @@ setup(
     version=VERSION,
     license=LICENSE,
     packages=PACKAGES,
+    install_requires=INSTALL_REQUIRES,
     classifiers=CLASSIFIERS,
     test_suite=TEST_SUITE,
     tests_require=TESTS_REQUIRE,
