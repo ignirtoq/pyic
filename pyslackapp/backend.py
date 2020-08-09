@@ -4,6 +4,13 @@ from typing import Union
 from jupyter_client import AsyncMultiKernelManager
 
 
+__all__ = [
+    'NoDefaultSessionError',
+    'SessionNotFoundError',
+    'SessionManager',
+]
+
+
 class NoDefaultSessionError(ValueError):
     """Exception raised when no session name is given and no default session is available"""
 
@@ -33,7 +40,7 @@ class SessionManager:
 
     @property
     def sessions(self):
-        return list(self._sessions.keys())
+        return set(self._sessions.keys())
 
     async def start_session(self, name):
         if name in self._sessions:

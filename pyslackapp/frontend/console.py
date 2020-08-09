@@ -1,8 +1,13 @@
 from asyncio import CancelledError, get_event_loop
 import ast
+import json
+import logging
 from traceback import format_exc
 
 from ..backend import SessionManager
+
+
+_log = logging.getLogger(__name__)
 
 
 def prompt_print(*args, **kwargs):
@@ -10,23 +15,31 @@ def prompt_print(*args, **kwargs):
 
 
 def print_result(msg, prompt):
+    debug_log_msg(msg)
     aprint(msg['content']['data']['text/plain'])
     prompt_print(prompt)
 
 
 def print_stream(msg, prompt):
+    debug_log_msg(msg)
     aprint()
     aprint(msg['content']['text'], end='')
     prompt_print(prompt)
 
 
 def print_exception(msg, prompt):
+    debug_log_msg(msg)
     aprint('\n'.join(msg['content']['traceback']))
     prompt_print(prompt)
 
 
 def aprint(*args, **kwargs):
     print(*args, **kwargs, flush=True)
+
+
+def debug_log_msg(msg):
+    if _log.getEffectiveLevel() <= logging.DEBUG:
+        _log.debug(f'interpreter response message:\n{msg}')
 
 
 def nullfunc(*_, **__):
@@ -181,10 +194,22 @@ async def main(queue):
         await processor.process_input(text)
 
 
+def setup_logging(verbosity):
+    level = logging.ERROR - 10*verbosity
+    logging.basicConfig(level=level)
+
+
 if __name__ == '__main__':
+    from argparse import ArgumentParser
     from asyncio import Queue
     from sys import stdin
     import threading
+
+    p = ArgumentParser(description='Test console multi-Python interface.')
+    p.add_argument('-v', action='count', default=0,
+                   help='verbose (specify multiple times for more verbosity)')
+    args = p.parse_args()
+    setup_logging(args.v)
 
     queue = Queue()
     loop = get_event_loop()
