@@ -128,23 +128,36 @@ class _Session:
             pass
 
 
+class StoppedQueueError(ValueError):
+    """The asynchronous queue has been stopped."""
+
+
 class _AiterQueue:
     _sentinel = object()
 
     def __init__(self):
         self._q = Queue()
+        self._stopped = False
         self._active = True
 
     def stop_nowait(self):
-        self._q.put_nowait(self._sentinel)
+        self._stopped = True
+        retval = self._q.put_nowait(self._sentinel)
+        return retval
 
     async def stop(self):
-        return await self._q.put(self._sentinel)
+        self._stopped = True
+        retval = await self._q.put(self._sentinel)
+        return retval
 
     def put_nowait(self, item):
+        if self._stopped:
+            raise StoppedQueueError
         return self._q.put_nowait(item)
 
     async def put(self, item):
+        if self._stopped:
+            raise StoppedQueueError
         return await self._q.put(item)
 
     def __aiter__(self):

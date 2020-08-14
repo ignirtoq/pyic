@@ -37,7 +37,7 @@ INSTALL_REQUIRES = [
     'jupyter_client ~= 6.1',
 ]
 TEST_SUITE = 'nose.collector'
-TESTS_REQUIRE = ['nose']
+TESTS_REQUIRE = ['pytest-asyncio']
 CLASSIFIERS = [
     'Development Status :: 3 - Alpha',
     'Intended Audience :: Developers',
