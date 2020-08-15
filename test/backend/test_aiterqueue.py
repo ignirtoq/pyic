@@ -1,6 +1,6 @@
 import pytest
 
-from pyslackapp.backend import _AiterQueue, StoppedQueueError
+from pyic.backend import _AiterQueue, StoppedQueueError
 
 
 @pytest.fixture

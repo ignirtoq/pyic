@@ -1,4 +1,4 @@
-from pyslackapp.frontend.slack.requests import get_codeblocks
+from pyic.frontend.slack.requests import get_codeblocks
 
 
 HAS_CODEBLOCK = """
