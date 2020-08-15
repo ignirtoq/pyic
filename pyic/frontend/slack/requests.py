@@ -8,7 +8,7 @@ from aiohttp import web
 from ..rest import RestSessions
 from .constants import VERIFICATION_SECRET, OAUTH_TOKEN
 from .responses import respond
-from .verification import SignatureVerificationError, verify_signature
+from .verification import verify_signature
 
 
 __all__ = ['handle_request']
@@ -43,18 +43,12 @@ class SlackPythonSessions(RestSessions):
         }
 
     async def process_request(self, body):
-        try:
-            return await self.delegate_request(body)
-        except SignatureVerificationError as e:
-            err = f'ignoring request: {e.args[0]}'
-            _log.warning(err)
-            raise web.HTTPUnauthorized from None
-        except web.HTTPException:
-            raise
-        except Exception:
-            err = 'unexpected exception'
-            _log.exception(err)
-            raise web.HTTPInternalServerError from None
+        body_json = json.loads(body.decode()) if body else {}
+
+        request_type = body_json.get(REQUEST_TYPE)
+        handler = self._request_handlers.get(request_type, self.process_unknown_request)
+
+        return await handler(body_json)
 
     @classmethod
     def add_app_routes(cls, app, *, secret, oauth, **cmdargs):
@@ -62,18 +56,10 @@ class SlackPythonSessions(RestSessions):
         app[OAUTH_TOKEN] = read_file_value(oauth)
         app.router.add_view('/slack/', cls)
 
-
-    async def delegate_request(self, body):
+    async def verify_request(self, body):
         headers = self.request.headers
         secret = self.request.app[VERIFICATION_SECRET]
         verify_signature(secret, headers, body)
-
-        body_json = json.loads(body.decode()) if body else {}
-
-        request_type = body_json.get(REQUEST_TYPE)
-        handler = self._request_handlers.get(request_type, self.process_unknown_request)
-
-        return await handler(body_json)
 
     # Root request handlers
 

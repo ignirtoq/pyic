@@ -1,10 +1,9 @@
 import hmac
 
+from ..rest.interface import VerificationError
 
-__all__ = [
-    'SignatureVerificationError',
-    'verify_signature',
-]
+
+__all__ = ['verify_signature',]
 
 
 HEADER_SIGNATURE = 'X-Slack-Signature'
@@ -13,17 +12,13 @@ SLACK_VERSION = 'v0'
 DELIMITER = ':'
 
 
-class SignatureVerificationError(ValueError):
-    """Provided message signature did not match computed message signature."""
-
-
 def verify_signature(private_key, headers, body):
     provided_sig = headers.get(HEADER_SIGNATURE, '')
     timestamp = f'{headers.get(HEADER_TIMESTAMP, "")}'
     body = body.decode()
     computed_sig = _data_to_signature(private_key, timestamp, body)
     if not provided_sig.lower() == computed_sig.lower():
-        raise SignatureVerificationError(
+        raise VerificationError(
             f'provided signature\n{provided_sig}\ndoes not match expected\n'
             f'{computed_sig}')
 
