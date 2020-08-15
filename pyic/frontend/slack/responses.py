@@ -13,24 +13,29 @@ _log = logging.getLogger(__name__)
 POST_URL = 'https://slack.com/api/chat.postMessage'
 
 
-async def respond(request, slack_msg, jupyter_msg):
+async def respond(request, slack_msg, jupyter_queue):
     response = get_slack_channel_and_thread(slack_msg)
     thread, channel = response['channel'], response['thread_ts']
     _log.info(f'message in channel {channel} thread {thread} processing complete')
-    if jupyter_msg is None:
+
+    response_sent = False
+
+    async for jupyter_msg in jupyter_queue:
+        try:
+            text = get_jupyter_text(jupyter_msg)
+        except KeyError:
+            _log.warning(f'unknown Python message type "{juptyer_msg["msg_type"]}"')
+            continue
+
+        response['text'] = text
+
+        await send_response(request.app, response)
+        response_sent = True
+
+    if not response_sent:
         _log.info(f'no Python response for message in channel {channel} '
                   f'thread {thread}')
         return
-
-    try:
-        text = get_jupyter_text(jupyter_msg)
-    except KeyError:
-        _log.warning(f'unknown Python message type "{juptyer_msg["msg_type"]}"')
-        return
-
-    response['text'] = text
-
-    await send_response(request.app, response)
 
 
 def get_slack_channel_and_thread(msg):

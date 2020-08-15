@@ -1,9 +1,10 @@
 from abc import ABCMeta, abstractmethod
-from asyncio import CancelledError, Future, get_event_loop
+from asyncio import CancelledError, get_event_loop
 import logging
 
 from aiohttp import web
 
+from ...aiterqueue import AiterQueue
 from .adapter import SESSION_MANAGER, SESSION_RESPONSES, attach_backend
 
 __all__ = [
@@ -44,16 +45,16 @@ class RestSessions(web.View, metaclass=ABCMeta):
 
     async def execute(self, session, codeblock, handler):
         sm = self.request.app[SESSION_MANAGER]
-        future_map = self.request.app[SESSION_RESPONSES]
+        queue_map = self.request.app[SESSION_RESPONSES]
 
         await sm.start_session(session)
         msg_id = await sm.execute(codeblock, name=session)
 
-        future = Future()
-        future_map[msg_id] = future
+        queue = AiterQueue()
+        queue_map[msg_id] = queue
 
         get_event_loop().create_task(
-            self._listen_for_interpreter_response(msg_id, future_map, handler))
+            self._listen_for_interpreter_response(msg_id, queue_map, handler))
 
     @classmethod
     def get_app(cls):
@@ -87,16 +88,14 @@ class RestSessions(web.View, metaclass=ABCMeta):
         return await self.process_request(body)
 
     @classmethod
-    async def _listen_for_interpreter_response(cls, msg_id, future_map, handler):
-        future = future_map[msg_id]
+    async def _listen_for_interpreter_response(cls, msg_id, queue_map, handler):
+        queue = queue_map[msg_id]
         try:
-            response = await future
+            await handler(queue)
         except CancelledError:
             return
-        else:
-            await handler(response)
         finally:
             try:
-                future_map.pop(msg_id)
+                queue_map.pop(msg_id)
             except KeyError:
                 pass

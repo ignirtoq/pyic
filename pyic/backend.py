@@ -3,6 +3,8 @@ from typing import Union
 
 from jupyter_client import AsyncMultiKernelManager
 
+from .aiterqueue import AiterQueue
+
 
 __all__ = [
     'NoDefaultSessionError',
@@ -33,7 +35,7 @@ class SessionManager:
         self._kernelman = AsyncMultiKernelManager()
         self._default = self._kernelman.new_kernel_id() if use_default_session else None
         self._sessions = {}
-        self._queue = _AiterQueue()
+        self._queue = AiterQueue()
 
     def __aiter__(self):
         return self._queue
@@ -83,7 +85,7 @@ class SessionManager:
 
         self._sessions = {}
         await self._queue.stop()
-        self._queue = _AiterQueue()
+        self._queue = AiterQueue()
 
 
 class _Session:
@@ -126,50 +128,3 @@ class _Session:
                 await msg_queue.put(msg)
         except CancelledError:
             pass
-
-
-class StoppedQueueError(ValueError):
-    """The asynchronous queue has been stopped."""
-
-
-class _AiterQueue:
-    _sentinel = object()
-
-    def __init__(self):
-        self._q = Queue()
-        self._stopped = False
-        self._active = True
-
-    def stop_nowait(self):
-        self._stopped = True
-        retval = self._q.put_nowait(self._sentinel)
-        return retval
-
-    async def stop(self):
-        self._stopped = True
-        retval = await self._q.put(self._sentinel)
-        return retval
-
-    def put_nowait(self, item):
-        if self._stopped:
-            raise StoppedQueueError
-        return self._q.put_nowait(item)
-
-    async def put(self, item):
-        if self._stopped:
-            raise StoppedQueueError
-        return await self._q.put(item)
-
-    def __aiter__(self):
-        return self
-
-    async def __anext__(self):
-        if not self._active:
-            raise StopAsyncIteration
-
-        item = await self._q.get()
-        if item is self._sentinel:
-            self._active = False
-            raise StopAsyncIteration
-
-        return item

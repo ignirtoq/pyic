@@ -1,11 +1,11 @@
 import pytest
 
-from pyic.backend import _AiterQueue, StoppedQueueError
+from pyic.aiterqueue import AiterQueue, StoppedQueueError
 
 
 @pytest.fixture
 async def q():
-    return _AiterQueue()
+    return AiterQueue()
 
 
 @pytest.mark.asyncio
